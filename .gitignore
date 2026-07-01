@@ -1,0 +1,12 @@
+build/
+.ninja_deps
+.ninja_log
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+Makefile
+*.a
+*.so
+*.dylib
+*.exe
+*.out
