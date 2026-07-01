@@ -5,6 +5,7 @@
 #include <chrono>
 #include <memory>
 #include <string>
+#include <array>
 #include <queue>
 #include <mutex>
 #include <condition_variable>
@@ -73,9 +74,17 @@ public:
     Result run(const Scenario& scenario);
 
 private:
+    using StepHandler = bool (ScenarioRunner::*)(const ScenarioStep&, Result&, std::string&, char);
+
     FixSession& m_session;
     std::shared_ptr<Connection> m_conn;
     std::vector<ScenarioStep> m_active_mocks;
+
+    bool handle_connect_step(const ScenarioStep& step, Result& result, std::string& rx_buffer, char separator);
+    bool handle_disconnect_step(const ScenarioStep& step, Result& result, std::string& rx_buffer, char separator);
+    bool handle_send_step(const ScenarioStep& step, Result& result, std::string& rx_buffer, char separator);
+    bool handle_expect_step(const ScenarioStep& step, Result& result, std::string& rx_buffer, char separator);
+    bool handle_mock_step(const ScenarioStep& step, Result& result, std::string& rx_buffer, char separator);
 
     bool match_fields(const FixMessage& msg, std::span<const Field> expected) const;
     bool process_mocks(const FixMessage& received_msg);

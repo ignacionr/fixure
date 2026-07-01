@@ -6,19 +6,24 @@
 namespace fixure {
 
 std::string_view to_string(ParseError err) {
-    switch (err) {
-        case ParseError::Ok: return "Ok";
-        case ParseError::EmptyBuffer: return "EmptyBuffer";
-        case ParseError::InvalidBeginString: return "InvalidBeginString";
-        case ParseError::MissingBodyLength: return "MissingBodyLength";
-        case ParseError::InvalidBodyLength: return "InvalidBodyLength";
-        case ParseError::BodyLengthMismatch: return "BodyLengthMismatch";
-        case ParseError::MissingChecksum: return "MissingChecksum";
-        case ParseError::InvalidChecksum: return "InvalidChecksum";
-        case ParseError::ChecksumMismatch: return "ChecksumMismatch";
-        case ParseError::InvalidFormat: return "InvalidFormat";
-        case ParseError::TooManyFields: return "TooManyFields";
-        case ParseError::TagNotFound: return "TagNotFound";
+    static constexpr std::array<std::string_view, 12> names{
+        "Ok",
+        "EmptyBuffer",
+        "InvalidBeginString",
+        "MissingBodyLength",
+        "InvalidBodyLength",
+        "BodyLengthMismatch",
+        "MissingChecksum",
+        "InvalidChecksum",
+        "ChecksumMismatch",
+        "InvalidFormat",
+        "TooManyFields",
+        "TagNotFound"
+    };
+
+    const auto idx = static_cast<size_t>(err);
+    if (idx < names.size()) {
+        return names[idx];
     }
     return "UnknownError";
 }

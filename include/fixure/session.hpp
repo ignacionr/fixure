@@ -4,6 +4,7 @@
 #include <string>
 #include <string_view>
 #include <vector>
+#include <array>
 #include <expected>
 #include <chrono>
 #include <ostream>
@@ -69,15 +70,22 @@ private:
 std::string get_sending_time();
 
 inline std::ostream& operator<<(std::ostream& os, FixSession::SessionAction action) {
-    switch (action) {
-        case FixSession::SessionAction::None: os << "None"; break;
-        case FixSession::SessionAction::SendLogon: os << "SendLogon"; break;
-        case FixSession::SessionAction::SendHeartbeat: os << "SendHeartbeat"; break;
-        case FixSession::SessionAction::SendReject: os << "SendReject"; break;
-        case FixSession::SessionAction::SendResendRequest: os << "SendResendRequest"; break;
-        case FixSession::SessionAction::ResetSequence: os << "ResetSequence"; break;
-        case FixSession::SessionAction::ProcessApplicationMessage: os << "ProcessApplicationMessage"; break;
-        case FixSession::SessionAction::Disconnect: os << "Disconnect"; break;
+    static constexpr std::array<std::string_view, 8> names{
+        "None",
+        "SendLogon",
+        "SendHeartbeat",
+        "SendReject",
+        "SendResendRequest",
+        "ResetSequence",
+        "ProcessApplicationMessage",
+        "Disconnect"
+    };
+
+    const auto idx = static_cast<size_t>(action);
+    if (idx < names.size()) {
+        os << names[idx];
+    } else {
+        os << "UnknownSessionAction";
     }
     return os;
 }

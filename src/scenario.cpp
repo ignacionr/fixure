@@ -2,17 +2,23 @@
 #include <fstream>
 #include <sstream>
 #include <charconv>
+#include <array>
 #include <algorithm>
 
 namespace fixure {
 
 std::string_view to_string(ActionType type) {
-    switch (type) {
-        case ActionType::Connect: return "CONNECT";
-        case ActionType::Send: return "SEND";
-        case ActionType::Expect: return "EXPECT";
-        case ActionType::Mock: return "MOCK";
-        case ActionType::Disconnect: return "DISCONNECT";
+    static constexpr std::array<std::string_view, 5> names{
+        "CONNECT",
+        "SEND",
+        "EXPECT",
+        "MOCK",
+        "DISCONNECT"
+    };
+
+    const auto idx = static_cast<size_t>(type);
+    if (idx < names.size()) {
+        return names[idx];
     }
     return "UNKNOWN";
 }

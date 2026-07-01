@@ -216,132 +216,176 @@ ScenarioRunner::Result ScenarioRunner::run(const Scenario& scenario) {
     std::string rx_buffer;
     char separator = SOH; // Default FIX separator
 
+    static constexpr std::array<StepHandler, 5> step_handlers{
+        &ScenarioRunner::handle_connect_step,
+        &ScenarioRunner::handle_send_step,
+        &ScenarioRunner::handle_expect_step,
+        &ScenarioRunner::handle_mock_step,
+        &ScenarioRunner::handle_disconnect_step
+    };
+
     for (const auto& step : scenario.steps()) {
         result.steps_executed++;
-        
-        switch (step.type) {
-            case ActionType::Connect: {
-                if (!m_conn->connect()) {
-                    result.error_message = "Step " + std::to_string(result.steps_executed) + " (CONNECT): Connection failed";
-                    return result;
-                }
-                break;
-            }
-            case ActionType::Disconnect: {
-                m_conn->disconnect();
-                break;
-            }
-            case ActionType::Send: {
-                // Construct the message fields
-                std::vector<Field> all_fields;
-                all_fields.reserve(6 + step.fields.size());
-                
-                // Set placeholders for header
-                Field header_buf[6];
-                std::string time_str;
-                size_t header_count = m_session.prepare_header(
-                    step.fields[0].tag == 35 ? step.fields[0].value : "0", 
-                    header_buf, 
-                    time_str
-                );
-                
-                for (size_t i = 0; i < header_count; ++i) {
-                    all_fields.push_back(header_buf[i]);
-                }
-                for (const auto& f : step.fields) {
-                    // Skip if they are already standard header tags 8, 35, 49, 56, 34, 52
-                    if (f.tag == 8 || f.tag == 35 || f.tag == 49 || f.tag == 56 || f.tag == 34 || f.tag == 52) {
-                        continue;
-                    }
-                    all_fields.push_back(f);
-                }
 
-                char serialize_buf[4096];
-                auto res = serialize_message(all_fields, serialize_buf, separator);
-                if (!res) {
-                    result.error_message = "Step " + std::to_string(result.steps_executed) + " (SEND): Serialization failed";
-                    return result;
-                }
+        const auto idx = static_cast<size_t>(step.type);
+        if (idx >= step_handlers.size()) {
+            result.error_message = "Step " + std::to_string(result.steps_executed) + " (UNKNOWN): Unsupported step type";
+            return result;
+        }
 
-                if (!m_conn->send(*res)) {
-                    result.error_message = "Step " + std::to_string(result.steps_executed) + " (SEND): Send failed";
-                    return result;
-                }
-
-                m_session.on_message_sent();
-                break;
-            }
-            case ActionType::Expect: {
-                bool matched = false;
-                auto start_time = std::chrono::steady_clock::now();
-                auto timeout = std::chrono::seconds(5);
-
-                while (!matched) {
-                    if (std::chrono::steady_clock::now() - start_time > timeout) {
-                        result.error_message = "Step " + std::to_string(result.steps_executed) + " (EXPECT): Timeout waiting for message";
-                        return result;
-                    }
-
-                    // Try to parse from the buffer first
-                    auto msg_str_opt = extract_next_message(rx_buffer, separator);
-                    if (!msg_str_opt) {
-                        // Receive new data
-                        auto rx = m_conn->receive(std::chrono::milliseconds(500));
-                        if (rx) {
-                            rx_buffer.append(*rx);
-                        }
-                        continue;
-                    }
-
-                    // We have a message, let's parse it!
-                    auto parsed_msg_res = FixMessage::parse(*msg_str_opt, separator);
-                    if (!parsed_msg_res) {
-                        result.error_message = "Step " + std::to_string(result.steps_executed) + " (EXPECT): Parse error " + std::string(to_string(parsed_msg_res.error()));
-                        return result;
-                    }
-
-                    const auto& msg = *parsed_msg_res;
-
-                    // Let session handle sequence & admin layers
-                    auto session_res = m_session.receive_message(msg);
-                    if (session_res.action == FixSession::SessionAction::Disconnect) {
-                        result.error_message = "Step " + std::to_string(result.steps_executed) + " (EXPECT): Session disconnect. " + session_res.info;
-                        return result;
-                    }
-
-                    // Check if it matches expected fields
-                    if (match_fields(msg, step.fields)) {
-                        matched = true;
-                    } else {
-                        // Check if it triggers a mock response instead
-                        if (process_mocks(msg)) {
-                            // Handled by mock, keep waiting for the expected message
-                            continue;
-                        }
-                        
-                        // If it's a heartbeat/test request, it was already handled by session, so we can ignore and keep waiting
-                        auto msg_type_opt = msg.get_field(35);
-                        if (msg_type_opt && (*msg_type_opt == "0" || *msg_type_opt == "1")) {
-                            continue;
-                        }
-
-                        // Otherwise, it's an mismatching application message
-                        result.error_message = "Step " + std::to_string(result.steps_executed) + " (EXPECT): Fields mismatch. Received MsgType=" + std::string(msg_type_opt.value_or("?"));
-                        return result;
-                    }
-                }
-                break;
-            }
-            case ActionType::Mock: {
-                // Register a mock rule
-                m_active_mocks.push_back(step);
-                break;
-            }
+        if (!(this->*step_handlers[idx])(step, result, rx_buffer, separator)) {
+            return result;
         }
     }
 
     result.success = true;
     return result;
+}
+
+bool ScenarioRunner::handle_connect_step(
+    [[maybe_unused]] const ScenarioStep& step,
+    Result& result,
+    [[maybe_unused]] std::string& rx_buffer,
+    [[maybe_unused]] char separator
+) {
+    if (!m_conn->connect()) {
+        result.error_message = "Step " + std::to_string(result.steps_executed) + " (CONNECT): Connection failed";
+        return false;
+    }
+    return true;
+}
+
+bool ScenarioRunner::handle_disconnect_step(
+    [[maybe_unused]] const ScenarioStep& step,
+    [[maybe_unused]] Result& result,
+    [[maybe_unused]] std::string& rx_buffer,
+    [[maybe_unused]] char separator
+) {
+    m_conn->disconnect();
+    return true;
+}
+
+bool ScenarioRunner::handle_send_step(
+    const ScenarioStep& step,
+    Result& result,
+    [[maybe_unused]] std::string& rx_buffer,
+    char separator
+) {
+    std::vector<Field> all_fields;
+    all_fields.reserve(6 + step.fields.size());
+
+    Field header_buf[6];
+    std::string time_str;
+    std::string_view msg_type = "0";
+    if (!step.fields.empty() && step.fields[0].tag == 35) {
+        msg_type = step.fields[0].value;
+    }
+
+    const size_t header_count = m_session.prepare_header(msg_type, header_buf, time_str);
+
+    for (size_t i = 0; i < header_count; ++i) {
+        all_fields.push_back(header_buf[i]);
+    }
+    for (const auto& f : step.fields) {
+        // Skip if they are already standard header tags 8, 35, 49, 56, 34, 52
+        if (f.tag == 8 || f.tag == 35 || f.tag == 49 || f.tag == 56 || f.tag == 34 || f.tag == 52) {
+            continue;
+        }
+        all_fields.push_back(f);
+    }
+
+    char serialize_buf[4096];
+    auto res = serialize_message(all_fields, serialize_buf, separator);
+    if (!res) {
+        result.error_message = "Step " + std::to_string(result.steps_executed) + " (SEND): Serialization failed";
+        return false;
+    }
+
+    if (!m_conn->send(*res)) {
+        result.error_message = "Step " + std::to_string(result.steps_executed) + " (SEND): Send failed";
+        return false;
+    }
+
+    m_session.on_message_sent();
+    return true;
+}
+
+bool ScenarioRunner::handle_expect_step(
+    const ScenarioStep& step,
+    Result& result,
+    std::string& rx_buffer,
+    char separator
+) {
+    bool matched = false;
+    auto start_time = std::chrono::steady_clock::now();
+    auto timeout = std::chrono::seconds(5);
+
+    while (!matched) {
+        if (std::chrono::steady_clock::now() - start_time > timeout) {
+            result.error_message = "Step " + std::to_string(result.steps_executed) + " (EXPECT): Timeout waiting for message";
+            return false;
+        }
+
+        // Try to parse from the buffer first
+        auto msg_str_opt = extract_next_message(rx_buffer, separator);
+        if (!msg_str_opt) {
+            // Receive new data
+            auto rx = m_conn->receive(std::chrono::milliseconds(500));
+            if (rx) {
+                rx_buffer.append(*rx);
+            }
+            continue;
+        }
+
+        // We have a message, let's parse it!
+        auto parsed_msg_res = FixMessage::parse(*msg_str_opt, separator);
+        if (!parsed_msg_res) {
+            result.error_message = "Step " + std::to_string(result.steps_executed) + " (EXPECT): Parse error " + std::string(to_string(parsed_msg_res.error()));
+            return false;
+        }
+
+        const auto& msg = *parsed_msg_res;
+
+        // Let session handle sequence & admin layers
+        auto session_res = m_session.receive_message(msg);
+        if (session_res.action == FixSession::SessionAction::Disconnect) {
+            result.error_message = "Step " + std::to_string(result.steps_executed) + " (EXPECT): Session disconnect. " + session_res.info;
+            return false;
+        }
+
+        // Check if it matches expected fields
+        if (match_fields(msg, step.fields)) {
+            matched = true;
+        } else {
+            // Check if it triggers a mock response instead
+            if (process_mocks(msg)) {
+                // Handled by mock, keep waiting for the expected message
+                continue;
+            }
+
+            // If it's a heartbeat/test request, it was already handled by session, so we can ignore and keep waiting
+            auto msg_type_opt = msg.get_field(35);
+            if (msg_type_opt && (*msg_type_opt == "0" || *msg_type_opt == "1")) {
+                continue;
+            }
+
+            // Otherwise, it's an mismatching application message
+            result.error_message = "Step " + std::to_string(result.steps_executed) + " (EXPECT): Fields mismatch. Received MsgType=" + std::string(msg_type_opt.value_or("?"));
+            return false;
+        }
+    }
+    return true;
+}
+
+bool ScenarioRunner::handle_mock_step(
+    const ScenarioStep& step,
+    [[maybe_unused]] Result& result,
+    [[maybe_unused]] std::string& rx_buffer,
+    [[maybe_unused]] char separator
+) {
+    // Register a mock rule
+    m_active_mocks.push_back(step);
+    return true;
 }
 
 bool ScenarioRunner::match_fields(const FixMessage& msg, std::span<const Field> expected) const {
