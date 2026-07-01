@@ -1,0 +1,89 @@
+digraph G {
+    fontname="Helvetica,Arial,sans-serif"
+    node [fontname="Helvetica,Arial,sans-serif"]
+    edge [fontname="Helvetica,Arial,sans-serif"]
+
+    // General styling
+    bgcolor="#0d1117"
+    label="fixure System Architecture"
+    labelloc="t"
+    labeljust="c"
+    fontsize=20
+    fontcolor="#c9d1d9"
+    rankdir=TB
+
+    // Node defaults
+    node [
+        shape=box
+        style="filled,rounded"
+        fillcolor="#161b22"
+        color="#30363d"
+        fontcolor="#c9d1d9"
+        penwidth=1.5
+    ]
+
+    // Edges default
+    edge [
+        color="#8b949e"
+        fontcolor="#8b949e"
+        fontsize=10
+        arrowsize=0.8
+    ]
+
+    // Subgraphs / Clusters
+    subgraph cluster_orchestration {
+        label="Test Orchestration"
+        style="filled"
+        fillcolor="#161b22"
+        color="#238636"
+        fontcolor="#7ee787"
+        
+        cli [label="fixure CLI\n(validate / run / replay)" fillcolor="#1f242c" color="#58a6ff"]
+        runner [label="Scenario Runner\n(Drives expects & mocks)" fillcolor="#1f242c" color="#58a6ff"]
+        replayer [label="Session Replayer\n(Timing preserved log replay)" fillcolor="#1f242c" color="#58a6ff"]
+    }
+
+    subgraph cluster_fix_engine {
+        label="FIX Protocol Engine"
+        style="filled"
+        fillcolor="#161b22"
+        color="#d29922"
+        fontcolor="#f0e68c"
+
+        session [label="FixSession\n(Logon / HB / Seq Check)" fillcolor="#21262d" color="#d29922"]
+        parser [label="FixMessage Parser\n(Zero-Allocation, Zero-Copy)" fillcolor="#21262d" color="#d29922"]
+        dict [label="Dictionary Validator\n(QuickFIX XML Schema)" fillcolor="#21262d" color="#d29922"]
+    }
+
+    subgraph cluster_io {
+        label="Connection Abstraction"
+        style="filled"
+        fillcolor="#161b22"
+        color="#8b949e"
+        fontcolor="#c9d1d9"
+
+        conn_if [label="Connection (Interface)" fillcolor="#21262d" color="#8b949e"]
+        in_memory [label="InMemoryConnection\n(Microsecond precise queues)" fillcolor="#21262d" color="#8b949e"]
+        tcp_conn [label="TcpConnection\n(TCP socket IO)" fillcolor="#21262d" color="#8b949e"]
+    }
+
+    sut [label="System Under Test (SUT)\n(External endpoint or mock SUT)" fillcolor="#30363d" color="#f85149" fontcolor="#ff7b72" shape=ellipse]
+
+    // Connections
+    cli -> runner [label="executes scenario"]
+    cli -> replayer [label="starts replay"]
+    
+    runner -> session [label="drives state"]
+    replayer -> conn_if [label="sends raw logs"]
+
+    runner -> conn_if [label="send / receive"]
+    
+    session -> parser [label="reads raw views"]
+    parser -> dict [label="validates tags"]
+
+    conn_if -> in_memory [arrowhead=onormal]
+    conn_if -> tcp_conn [arrowhead=onormal]
+
+    tcp_conn -> sut [label="TCP/IP" dir=both color="#ff7b72" fontcolor="#ff7b72"]
+    in_memory -> sut [label="in-process queue" dir=both color="#ff7b72" fontcolor="#ff7b72"]
+}

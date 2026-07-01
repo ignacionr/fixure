@@ -4,19 +4,8 @@
 
 Built for performance-critical trading systems, **fixure** strips away the bloat of traditional GUI-heavy enterprise simulators, providing developers with a scriptable, deterministic, and microsecond-precise environment to test session states, application workflows, and boundary conditions.
 
-```
-                  +-----------------------------------+
-                  |           fixure Runner           |
-                  |  [Drives state & expectations]    |
-                  +-----------------+-----------------+
-                                    | (Raw bytes)
-                                    v
-+------------------+      +-------------------+      +------------------+
-|   System Under   | <--->|  Zero-Copy Parser | <--->| QuickFIX XML/DSL |
-|   Test (SUT)     |      | [Validates rules] |      |  Specifications  |
-+------------------+      +-------------------+      +------------------+
+![fixure System Architecture](architecture.png)
 
-```
 
 ## Key Features
 
