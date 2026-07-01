@@ -83,6 +83,15 @@ bool Proxy::start() {
         return false;
     }
 
+    // Resolve actual port if 0 was passed
+    if (m_local_port == 0) {
+        struct sockaddr_in bound_addr{};
+        socklen_t len = sizeof(bound_addr);
+        if (::getsockname(m_server_fd, reinterpret_cast<struct sockaddr*>(&bound_addr), &len) == 0) {
+            m_local_port = ntohs(bound_addr.sin_port);
+        }
+    }
+
     if (::listen(m_server_fd, 3) < 0) {
         std::println(std::cerr, "[PROXY] [ERROR] Listen failed");
         return false;
@@ -91,6 +100,23 @@ bool Proxy::start() {
     std::println(std::cout, "[PROXY] Listening on port {} and forwarding to {}:{}...", m_local_port, m_target_host, m_target_port);
 
     while (m_running) {
+        fd_set rfds;
+        FD_ZERO(&rfds);
+        FD_SET(m_server_fd, &rfds);
+
+        struct timeval tv{};
+        tv.tv_sec = 0;
+        tv.tv_usec = 50000; // 50ms check interval
+
+        int retval = ::select(m_server_fd + 1, &rfds, nullptr, nullptr, &tv);
+        if (retval < 0) {
+            if (errno == EINTR) continue;
+            break;
+        }
+        if (retval == 0) {
+            continue; // Timeout, check m_running again
+        }
+
         struct sockaddr_in client_addr{};
         socklen_t addrlen = sizeof(client_addr);
         

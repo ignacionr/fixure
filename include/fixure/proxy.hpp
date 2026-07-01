@@ -24,6 +24,7 @@ public:
     // Starts the proxy. Blocks until stop() is called.
     bool start();
     void stop();
+    int get_local_port() const { return m_local_port; }
 
 private:
     int m_local_port;
