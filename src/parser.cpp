@@ -357,8 +357,6 @@ std::expected<std::string_view, std::error_code> serialize_message(
             );
         }
         offset = static_cast<size_t>(static_cast<int>(offset) + diff);
-        body_start_pos = static_cast<size_t>(static_cast<int>(body_start_pos) + diff);
-        body_end_pos = static_cast<size_t>(static_cast<int>(body_end_pos) + diff);
     }
 
     // Write actual body length into the "9=xxxxx" slot

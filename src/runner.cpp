@@ -95,7 +95,7 @@ TcpConnection::TcpConnection(std::string host, int port)
 }
 
 TcpConnection::~TcpConnection() {
-    disconnect();
+    TcpConnection::disconnect();
 #if defined(_MSC_VER)
     WSACleanup();
 #endif

@@ -54,7 +54,9 @@ TEST(ProxyTest, EndToEndProxyForwardingAndTiming) {
         // Use select with a 3-second timeout to avoid blocking indefinitely
         fd_set rfds;
         FD_ZERO(&rfds);
-        FD_SET(server_fd, &rfds);
+        if (server_fd >= 0 && server_fd < FD_SETSIZE) {
+            FD_SET(server_fd, &rfds); // NOLINT
+        }
         struct timeval tv{};
         tv.tv_sec = 3;
         
@@ -66,7 +68,9 @@ TEST(ProxyTest, EndToEndProxyForwardingAndTiming) {
             if (client_fd >= 0) {
                 // Select on client_fd for read
                 FD_ZERO(&rfds);
-                FD_SET(client_fd, &rfds);
+                if (client_fd >= 0 && client_fd < FD_SETSIZE) {
+                    FD_SET(client_fd, &rfds); // NOLINT
+                }
                 struct timeval client_tv{};
                 client_tv.tv_sec = 3;
                 
@@ -129,7 +133,9 @@ TEST(ProxyTest, EndToEndProxyForwardingAndTiming) {
     // Read Response with select timeout (3 seconds)
     fd_set client_fds;
     FD_ZERO(&client_fds);
-    FD_SET(client_fd, &client_fds);
+    if (client_fd >= 0 && client_fd < FD_SETSIZE) {
+        FD_SET(client_fd, &client_fds); // NOLINT
+    }
     struct timeval client_tv{};
     client_tv.tv_sec = 3;
 

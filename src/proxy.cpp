@@ -102,7 +102,9 @@ bool Proxy::start() {
     while (m_running) {
         fd_set rfds;
         FD_ZERO(&rfds);
-        FD_SET(m_server_fd, &rfds);
+        if (m_server_fd >= 0 && m_server_fd < FD_SETSIZE) {
+            FD_SET(m_server_fd, &rfds); // NOLINT
+        }
 
         struct timeval tv{};
         tv.tv_sec = 0;

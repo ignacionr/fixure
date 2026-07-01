@@ -17,10 +17,14 @@ jobs:
       uses: DeterminateSystems/nix-installer-action@v12
 
     - name: Configure CMake
-      run: nix develop --command cmake -B build -G Ninja
+      run: nix develop --command cmake -B build -G Ninja -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+
+    - name: Run Clang-Tidy Static Analysis
+      run: nix develop --command clang-tidy src/parser.cpp src/dictionary.cpp src/session.cpp src/scenario.cpp src/runner.cpp src/replay.cpp src/proxy.cpp app/main.cpp tests/test_main.cpp tests/test_parser.cpp tests/test_dictionary.cpp tests/test_session.cpp tests/test_scenario.cpp tests/test_proxy.cpp -p build "--warnings-as-errors=*"
 
     - name: Build Project
       run: nix develop --command cmake --build build
 
     - name: Run Unit Tests
       run: nix develop --command ./build/fixure_tests
+
