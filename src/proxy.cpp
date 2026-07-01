@@ -76,7 +76,7 @@ bool Proxy::start() {
     struct sockaddr_in address{};
     address.sin_family = AF_INET;
     address.sin_addr.s_addr = INADDR_ANY;
-    address.sin_port = htons(m_local_port);
+    address.sin_port = htons(static_cast<uint16_t>(m_local_port));
 
     if (::bind(m_server_fd, reinterpret_cast<struct sockaddr*>(&address), sizeof(address)) < 0) {
         std::println(std::cerr, "[PROXY] [ERROR] Bind failed on port {}", m_local_port);

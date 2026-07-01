@@ -31,7 +31,7 @@ TEST(ProxyTest, EndToEndProxyForwardingAndTiming) {
         struct sockaddr_in address{};
         address.sin_family = AF_INET;
         address.sin_addr.s_addr = ::inet_addr("127.0.0.1");
-        address.sin_port = htons(0); // Dynamic ephemeral port allocation
+        address.sin_port = htons(static_cast<uint16_t>(0)); // Dynamic ephemeral port allocation
         
         if (::bind(server_fd, reinterpret_cast<struct sockaddr*>(&address), sizeof(address)) < 0) {
             ::close(server_fd);
@@ -115,7 +115,7 @@ TEST(ProxyTest, EndToEndProxyForwardingAndTiming) {
     int client_fd = ::socket(AF_INET, SOCK_STREAM, 0);
     struct sockaddr_in serv_addr{};
     serv_addr.sin_family = AF_INET;
-    serv_addr.sin_port = htons(assigned_proxy_port);
+    serv_addr.sin_port = htons(static_cast<uint16_t>(assigned_proxy_port));
     ::inet_pton(AF_INET, "127.0.0.1", &serv_addr.sin_addr);
 
     int conn_res = ::connect(client_fd, reinterpret_cast<struct sockaddr*>(&serv_addr), sizeof(serv_addr));
