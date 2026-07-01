@@ -1,0 +1,63 @@
+digraph G {
+    fontname="Helvetica,Arial,sans-serif"
+    node [fontname="Helvetica,Arial,sans-serif"]
+    edge [fontname="Helvetica,Arial,sans-serif"]
+
+    // General styling
+    bgcolor="#0d1117"
+    label="fixure Smart Reverse Proxy Mechanics"
+    labelloc="t"
+    labeljust="c"
+    fontsize=18
+    fontcolor="#c9d1d9"
+    rankdir=LR
+
+    // Node defaults
+    node [
+        shape=box
+        style="filled,rounded"
+        fillcolor="#161b22"
+        color="#30363d"
+        fontcolor="#c9d1d9"
+        penwidth=1.5
+    ]
+
+    // Edges default
+    edge [
+        color="#8b949e"
+        fontcolor="#8b949e"
+        fontsize=9
+        arrowsize=0.8
+    ]
+
+    // Client/SUT
+    client [label="Client / SUT\n(TCP Initiator)" fillcolor="#1f242c" color="#58a6ff"]
+    sut [label="Target Server / SUT\n(TCP Acceptor)" fillcolor="#1f242c" color="#f85149"]
+
+    // Proxy internals (subgraph)
+    subgraph cluster_proxy {
+        label="fixure Reverse Proxy"
+        fillcolor="#161b22"
+        color="#d29922"
+        fontcolor="#f0e68c"
+        style="filled,dashed"
+
+        thread_c2s [label="Forwarder Thread (C -> S)\n- Intercepts raw views\n- Saves ClOrdID + Timestamp\n- Validates message schema" fillcolor="#21262d" color="#58a6ff"]
+        thread_s2c [label="Forwarder Thread (S -> C)\n- Intercepts responses\n- Matches ClOrdID\n- Calculates Delta Duration\n- Outputs latency metrics" fillcolor="#21262d" color="#f85149"]
+        
+        registry [label="Latency Registry\n(ClOrdID -> Start Time)" fillcolor="#30363d" color="#d29922" shape=cylinder]
+    }
+
+    // Step-by-step Flow
+    client -> thread_c2s [label="1. Send Order\n(35=D, 11=ORD1)" color="#58a6ff" fontcolor="#58a6ff"]
+    thread_c2s -> registry [label="2. Record start\ntime for ORD1" style=dashed color="#d29922" fontcolor="#d29922"]
+    thread_c2s -> sut [label="3. Forward raw\norder bytes" color="#58a6ff" fontcolor="#58a6ff"]
+    
+    sut -> thread_s2c [label="4. Reply Execution Report\n(35=8, 11=ORD1, 39=2)" color="#f85149" fontcolor="#f85149"]
+    thread_s2c -> registry [label="5. Lookup ORD1\nstart time" style=dashed color="#d29922" fontcolor="#d29922"]
+    thread_s2c -> client [label="6. Forward raw\nreport bytes" color="#f85149" fontcolor="#f85149"]
+
+    // Console Logging Output
+    log_node [label="Console Output\n[PROXY] [TIMING] ClOrdID ORD1 Order Latency: 75 µs" shape=note fillcolor="#1f242c" color="#7ee787" fontcolor="#7ee787"]
+    thread_s2c -> log_node [label="Log Metrics" style=dotted color="#7ee787"]
+}

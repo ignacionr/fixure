@@ -1,4 +1,5 @@
 # fixure
+[![CI Build](https://github.com/ignacionr/fixure/actions/workflows/ci.yml/badge.svg)](https://github.com/ignacionr/fixure/actions/workflows/ci.yml)
 
 **fixure** is an ultra-fast, zero-dependency, multiplatform C++23 test harness and mock container designed for rigorous validation of Financial Information eXchange (FIX) protocol implementations.
 
@@ -75,6 +76,18 @@ Listen on a local port, forward FIX traffic in both directions, validate message
 ```bash
 ./build/fixure proxy 9002 127.0.0.1 9001 --dict spec/FIX42.xml
 ```
+
+##### Reverse Proxy Mechanics
+
+The proxy intercept and analysis flow is detailed below:
+
+![Proxy Mechanics](proxy_mechanics.png)
+
+1. **Interception**: Spawns two dedicated forwarder threads (one for outbound client traffic, one for inbound server traffic) to handle bidirectional socket streams.
+2. **Parsing**: Operates in-place on raw network slices using zero-copy `std::string_view` parsing.
+3. **Latency Registry**: Outbound order streams (MsgType `D`) extract the `ClOrdID (11)` tag and register a high-precision start timestamp in a lock-free structure.
+4. **Calculations**: Inbound execution reports (MsgType `8`) look up the matching `ClOrdID`, compute the microsecond-level round-trip delta, and print timing telemetry to the console.
+5. **Validation**: Verifies schema conformance on the fly using standard QuickFIX XML data dictionaries.
 
 ---
 
