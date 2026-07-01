@@ -50,7 +50,7 @@ Run the unit test suite:
 
 ### Command Line Interface (CLI)
 
-The `fixure` binary provides three primary commands:
+The `fixure` binary provides four primary commands:
 
 #### 1. Validate a FIX Message
 Parse, view, and validate a FIX message string or file. You can optionally provide a QuickFIX XML data dictionary for schema validation:
@@ -68,6 +68,12 @@ Execute a scenario script against a System Under Test (SUT) listening on a TCP p
 Replay recorded FIX logs to a SUT, optionally preserving the original timing delay between messages:
 ```bash
 ./build/fixure replay production.log 127.0.0.1 5001 --preserve-timing
+```
+
+#### 4. Smart Reverse Proxy
+Listen on a local port, forward FIX traffic in both directions, validate message schemas in real time, and output microsecond-precise roundtrip metrics (e.g. Logon response latency and Order lifecycle latency via `ClOrdID` tracking):
+```bash
+./build/fixure proxy 9002 127.0.0.1 9001 --dict spec/FIX42.xml
 ```
 
 ---

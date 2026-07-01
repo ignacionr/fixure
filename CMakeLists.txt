@@ -20,6 +20,7 @@ add_library(fixure
     src/scenario.cpp
     src/runner.cpp
     src/replay.cpp
+    src/proxy.cpp
 )
 
 target_include_directories(fixure PUBLIC
@@ -42,6 +43,7 @@ add_executable(fixure_tests
     tests/test_dictionary.cpp
     tests/test_session.cpp
     tests/test_scenario.cpp
+    tests/test_proxy.cpp
 )
 target_link_libraries(fixure_tests PRIVATE fixure)
 add_test(NAME fixure_unit_tests COMMAND fixure_tests)

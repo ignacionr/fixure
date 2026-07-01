@@ -3,6 +3,7 @@
 #include <fixure/scenario.hpp>
 #include <fixure/runner.hpp>
 #include <fixure/replay.hpp>
+#include <fixure/proxy.hpp>
 #include <iostream>
 #include <fstream>
 #include <sstream>
@@ -16,6 +17,7 @@ void print_usage() {
     std::println(std::cerr, "  fixure validate <msg_string_or_file> [--dict <xml_dict_path>] [--separator <char>]");
     std::println(std::cerr, "  fixure run <scenario_file> <host> <port>");
     std::println(std::cerr, "  fixure replay <log_file> <host> <port> [--preserve-timing]");
+    std::println(std::cerr, "  fixure proxy <local_port> <target_host> <target_port> [--dict <xml_dict_path>]");
 }
 
 int main(int argc, char* argv[]) {
@@ -154,6 +156,34 @@ int main(int argc, char* argv[]) {
             std::println(std::cerr, "FAIL: Replay failed: {}", result.error_message);
             return 1;
         }
+    }
+    else if (command == "proxy") {
+        if (argc < 5) {
+            print_usage();
+            return 1;
+        }
+        int local_port = std::stoi(argv[2]);
+        std::string target_host = argv[3];
+        int target_port = std::stoi(argv[4]);
+        
+        std::optional<fixure::Dictionary> dict;
+        for (int i = 5; i < argc; ++i) {
+            if (std::string_view(argv[i]) == "--dict" && i + 1 < argc) {
+                std::string dict_path = argv[++i];
+                auto dict_res = fixure::Dictionary::load_xml(dict_path);
+                if (!dict_res) {
+                    std::println(std::cerr, "FAIL: Could not load data dictionary: {}", dict_res.error());
+                    return 1;
+                }
+                dict = *dict_res;
+            }
+        }
+
+        fixure::Proxy proxy(local_port, target_host, target_port, dict);
+        if (!proxy.start()) {
+            return 1;
+        }
+        return 0;
     }
 
     print_usage();

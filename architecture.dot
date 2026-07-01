@@ -38,9 +38,10 @@ digraph G {
         color="#238636"
         fontcolor="#7ee787"
         
-        cli [label="fixure CLI\n(validate / run / replay)" fillcolor="#1f242c" color="#58a6ff"]
+        cli [label="fixure CLI\n(validate / run / replay / proxy)" fillcolor="#1f242c" color="#58a6ff"]
         runner [label="Scenario Runner\n(Drives expects & mocks)" fillcolor="#1f242c" color="#58a6ff"]
         replayer [label="Session Replayer\n(Timing preserved log replay)" fillcolor="#1f242c" color="#58a6ff"]
+        proxy [label="Smart Reverse Proxy\n(Intercepts, validates, times)" fillcolor="#1f242c" color="#58a6ff"]
     }
 
     subgraph cluster_fix_engine {
@@ -72,6 +73,7 @@ digraph G {
     // Connections
     cli -> runner [label="executes scenario"]
     cli -> replayer [label="starts replay"]
+    cli -> proxy [label="starts proxy"]
     
     runner -> session [label="drives state"]
     replayer -> conn_if [label="sends raw logs"]
@@ -80,6 +82,10 @@ digraph G {
     
     session -> parser [label="reads raw views"]
     parser -> dict [label="validates tags"]
+    
+    proxy -> parser [label="reads raw views"]
+    proxy -> dict [label="validates tags"]
+    proxy -> sut [label="TCP forwarding" dir=both color="#ff7b72" fontcolor="#ff7b72"]
 
     conn_if -> in_memory [arrowhead=onormal]
     conn_if -> tcp_conn [arrowhead=onormal]
