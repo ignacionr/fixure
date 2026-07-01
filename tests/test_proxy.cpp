@@ -30,7 +30,7 @@ TEST(ProxyTest, EndToEndProxyForwardingAndTiming) {
         address.sin_addr.s_addr = INADDR_ANY;
         address.sin_port = htons(port_sut);
         
-        if (::bind(server_fd, (struct sockaddr*)&address, sizeof(address)) < 0) {
+        if (::bind(server_fd, reinterpret_cast<struct sockaddr*>(&address), sizeof(address)) < 0) {
             ::close(server_fd);
             return;
         }
@@ -41,7 +41,7 @@ TEST(ProxyTest, EndToEndProxyForwardingAndTiming) {
         
         struct sockaddr_in client_addr{};
         socklen_t addrlen = sizeof(client_addr);
-        int client_fd = ::accept(server_fd, (struct sockaddr*)&client_addr, &addrlen);
+        int client_fd = ::accept(server_fd, reinterpret_cast<struct sockaddr*>(&client_addr), &addrlen);
         if (client_fd >= 0) {
             char buf[512];
             auto bytes = ::recv(client_fd, buf, sizeof(buf), 0);
@@ -71,7 +71,7 @@ TEST(ProxyTest, EndToEndProxyForwardingAndTiming) {
     serv_addr.sin_port = htons(port_proxy);
     ::inet_pton(AF_INET, "127.0.0.1", &serv_addr.sin_addr);
 
-    int conn_res = ::connect(client_fd, (struct sockaddr*)&serv_addr, sizeof(serv_addr));
+    int conn_res = ::connect(client_fd, reinterpret_cast<struct sockaddr*>(&serv_addr), sizeof(serv_addr));
     ASSERT_EQ(conn_res, 0);
 
     // Send Logon
@@ -84,7 +84,7 @@ TEST(ProxyTest, EndToEndProxyForwardingAndTiming) {
     auto received = ::recv(client_fd, buf, sizeof(buf), 0);
     ASSERT_TRUE(received > 0);
 
-    std::string_view response(buf, received);
+    std::string_view response(buf, static_cast<size_t>(received));
     ASSERT_TRUE(response.starts_with("8=FIX.4.2"));
     ASSERT_TRUE(response.contains("35=A")); // Logon response
 

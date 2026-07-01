@@ -149,7 +149,7 @@ bool TcpConnection::send(std::string_view data) {
         if (sent <= 0) {
             return false;
         }
-        total_sent += sent;
+        total_sent += static_cast<size_t>(sent);
     }
     return true;
 }
@@ -173,7 +173,7 @@ std::optional<std::string> TcpConnection::receive(std::chrono::milliseconds time
     if (bytes_received <= 0) {
         return std::nullopt;
     }
-    return std::string(buf, bytes_received);
+    return std::string(buf, static_cast<size_t>(bytes_received));
 }
 
 // --- ScenarioRunner ---

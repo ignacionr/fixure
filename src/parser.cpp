@@ -219,7 +219,7 @@ FixMessage::GroupView FixMessage::get_group(int group_tag, int delim_tag) const 
     if (!num_instances_opt || *num_instances_opt <= 0) {
         return view;
     }
-    size_t num_instances = *num_instances_opt;
+    size_t num_instances = static_cast<size_t>(*num_instances_opt);
 
     // Scan following fields
     size_t current_idx = group_field_idx + 1;
@@ -277,7 +277,7 @@ std::expected<std::string_view, std::error_code> serialize_message(
     
     auto write_str = [&](std::string_view s) -> bool {
         if (offset + s.size() > buffer.size()) return false;
-        std::copy(s.begin(), s.end(), buffer.begin() + offset);
+        std::copy(s.begin(), s.end(), buffer.begin() + static_cast<ptrdiff_t>(offset));
         offset += s.size();
         return true;
     };
@@ -287,7 +287,7 @@ std::expected<std::string_view, std::error_code> serialize_message(
         auto [ptr, ec] = std::to_chars(tag_buf, tag_buf + sizeof(tag_buf), tag);
         if (ec != std::errc{}) return false;
         
-        std::string_view tag_str(tag_buf, ptr - tag_buf);
+        std::string_view tag_str(tag_buf, static_cast<size_t>(ptr - tag_buf));
         if (!write_str(tag_str)) return false;
         if (offset >= buffer.size()) return false;
         buffer[offset++] = '=';
@@ -329,7 +329,7 @@ std::expected<std::string_view, std::error_code> serialize_message(
     char body_len_buf[16];
     auto [ptr_bl, ec_bl] = std::to_chars(body_len_buf, body_len_buf + sizeof(body_len_buf), body_len);
     if (ec_bl != std::errc{}) return std::unexpected(std::make_error_code(std::errc::value_too_large));
-    std::string_view body_len_str(body_len_buf, ptr_bl - body_len_buf);
+    std::string_view body_len_str(body_len_buf, static_cast<size_t>(ptr_bl - body_len_buf));
 
     // Patch the body length field: "9=" is at body_length_tag_pos.
     // The placeholder was "9=00000". Let's pad body_len_str to 5 chars or reconstruct/shift.
@@ -344,17 +344,29 @@ std::expected<std::string_view, std::error_code> serialize_message(
 
         size_t shift_start = body_length_tag_pos + 2 + placeholder_val_len;
         if (diff > 0) {
-            std::move_backward(buffer.begin() + shift_start, buffer.begin() + offset, buffer.begin() + offset + diff);
+            std::move_backward(
+                buffer.begin() + static_cast<ptrdiff_t>(shift_start),
+                buffer.begin() + static_cast<ptrdiff_t>(offset),
+                buffer.begin() + static_cast<ptrdiff_t>(offset) + diff
+            );
         } else {
-            std::move(buffer.begin() + shift_start, buffer.begin() + offset, buffer.begin() + shift_start + diff);
+            std::move(
+                buffer.begin() + static_cast<ptrdiff_t>(shift_start),
+                buffer.begin() + static_cast<ptrdiff_t>(offset),
+                buffer.begin() + static_cast<ptrdiff_t>(shift_start) + diff
+            );
         }
-        offset += diff;
-        body_start_pos = body_start_pos + diff;
-        body_end_pos = body_end_pos + diff;
+        offset = static_cast<size_t>(static_cast<int>(offset) + diff);
+        body_start_pos = static_cast<size_t>(static_cast<int>(body_start_pos) + diff);
+        body_end_pos = static_cast<size_t>(static_cast<int>(body_end_pos) + diff);
     }
 
     // Write actual body length into the "9=xxxxx" slot
-    std::copy(body_len_str.begin(), body_len_str.end(), buffer.begin() + body_length_tag_pos + 2);
+    std::copy(
+        body_len_str.begin(),
+        body_len_str.end(),
+        buffer.begin() + static_cast<ptrdiff_t>(body_length_tag_pos + 2)
+    );
 
     // 4. Calculate checksum of all bytes before tag 10
     unsigned int checksum = 0;
@@ -365,9 +377,9 @@ std::expected<std::string_view, std::error_code> serialize_message(
 
     // Write checksum tag "10="
     char cs_str[3];
-    cs_str[0] = '0' + (checksum / 100);
-    cs_str[1] = '0' + ((checksum / 10) % 10);
-    cs_str[2] = '0' + (checksum % 10);
+    cs_str[0] = static_cast<char>('0' + (checksum / 100));
+    cs_str[1] = static_cast<char>('0' + ((checksum / 10) % 10));
+    cs_str[2] = static_cast<char>('0' + (checksum % 10));
     
     if (!write_tag_val(10, std::string_view(cs_str, 3))) {
         return std::unexpected(std::make_error_code(std::errc::no_buffer_space));

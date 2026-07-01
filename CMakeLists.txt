@@ -9,7 +9,24 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 if(MSVC)
     add_compile_options(/W4 /WX /permissive-)
 else()
-    add_compile_options(-Wall -Wextra -Wpedantic -Werror -O3)
+    add_compile_options(
+        -Wall
+        -Wextra
+        -Wpedantic
+        -Werror
+        -Wshadow
+        -Wnon-virtual-dtor
+        -Wold-style-cast
+        -Wcast-align
+        -Wunused
+        -Woverloaded-virtual
+        -Wconversion
+        -Wsign-conversion
+        -Wnull-dereference
+        -Wdouble-promotion
+        -Wformat=2
+        -O3
+    )
 endif()
 
 # Header-only or library? Let's make it a library

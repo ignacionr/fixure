@@ -60,7 +60,7 @@ size_t FixSession::prepare_header(std::string_view msg_type, std::span<Field> he
     // Let's store sequence string as a thread-local to maintain zero-allocation for the session.
     static thread_local char seq_buf[16];
     auto [ptr_seq, ec_seq] = std::to_chars(seq_buf, seq_buf + sizeof(seq_buf), m_next_out_seq);
-    std::string_view seq_str(seq_buf, ptr_seq - seq_buf);
+    std::string_view seq_str(seq_buf, static_cast<size_t>(ptr_seq - seq_buf));
 
     header_fields_buffer[4] = Field{34, seq_str};
     header_fields_buffer[5] = Field{52, time_str_out};

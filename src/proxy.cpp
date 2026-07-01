@@ -78,7 +78,7 @@ bool Proxy::start() {
     address.sin_addr.s_addr = INADDR_ANY;
     address.sin_port = htons(m_local_port);
 
-    if (::bind(m_server_fd, (struct sockaddr*)&address, sizeof(address)) < 0) {
+    if (::bind(m_server_fd, reinterpret_cast<struct sockaddr*>(&address), sizeof(address)) < 0) {
         std::println(std::cerr, "[PROXY] [ERROR] Bind failed on port {}", m_local_port);
         return false;
     }
@@ -94,7 +94,7 @@ bool Proxy::start() {
         struct sockaddr_in client_addr{};
         socklen_t addrlen = sizeof(client_addr);
         
-        int client_fd = ::accept(m_server_fd, (struct sockaddr*)&client_addr, &addrlen);
+        int client_fd = ::accept(m_server_fd, reinterpret_cast<struct sockaddr*>(&client_addr), &addrlen);
         if (client_fd < 0) {
             if (!m_running) break;
             continue;
@@ -183,7 +183,7 @@ void Proxy::forward_traffic(int src_fd, int dst_fd, bool is_client_to_server, st
             break;
         }
 
-        rx_buffer.append(buf, bytes_read);
+        rx_buffer.append(buf, static_cast<size_t>(bytes_read));
 
         // Parse and analyze messages from buffer
         while (true) {
@@ -210,7 +210,7 @@ void Proxy::forward_traffic(int src_fd, int dst_fd, bool is_client_to_server, st
                 connection_active = false;
                 break;
             }
-            total_sent += sent;
+            total_sent += static_cast<size_t>(sent);
         }
     }
 
